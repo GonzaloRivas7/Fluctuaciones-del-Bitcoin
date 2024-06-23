@@ -34,3 +34,73 @@ Identificación de Modelos Inadecuados: Si los residuos muestran patrones, tende
 Para obtener una visión más completa y robusta del mercado, se hizo la comparación con otro modelo, específicamente GARCH. El modelo GARCH (Generalized Autoregressive Conditional Heteroskedasticity) es una extensión del modelo ARCH (Autoregressive Conditional Heteroskedasticity) y está diseñado específicamente para modelar y pronosticar la volatilidad condicional en series temporales financieras. Se puede decir que es un enfoque para estimar la volatilidad de los mercados financieros . Las instituciones financieras utilizan el modelo para estimar la volatilidad del rendimiento de acciones, bonos y otros vehículos de inversión.
 
 Finalmente obtenemos que el valor de los p-values son menores a 0,05, por lo que nuestros resultados son estadísticamente significativos. ¿Qué significa esto?, un p-value menor a 0,05 indica que la probabilidad de que los resultados observados se deban al azar es menor al 5%, lo cual nos proporciona una base sólida para poder avanzar con confianza en nuestras conclusiones.​
+
+# R Notebook
+
+library(forecast)
+
+library(quantmod)
+
+library(rugarch)
+
+### Carga los datos históricos del Bitcoin (por ejemplo, utilizando el paquete quantmod)
+
+btc_data <- getSymbols("BTC-USD", from="2015-01-01", src = "yahoo", auto.assign = FALSE)
+
+plot(btc_data, main = "Historical Bitcoin Data", xlab = "Date", ylab = "Price (USD)")
+
+print(btc_data)
+
+btc_close <- Cl(btc_data)  
+
+### Obtiene los precios de cierre
+
+plot(btc_close, main = "Bitcoin Closing Prices", xlab = "Date", ylab = "Closing Price (USD)")
+
+### Convierte los datos a una serie temporal
+
+btc_ts <- ts(btc_close, frequency = 1)
+
+print(btc_ts)
+
+### Ajusta el modelo ARIMA automáticamente
+
+btc_arima <- auto.arima(btc_ts)
+
+print(btc_arima)
+
+### Análisis de residuos
+
+checkresiduals(btc_arima)
+
+### Realiza el pronóstico
+
+btc_forecast <- forecast(btc_arima, h = 30)  # Pronóstico para los próximos 30 periodos
+
+### Imprime el pronóstico
+
+print(btc_forecast)
+
+### Grafica el pronóstico con un "zoom" en la predicción
+plot(btc_forecast, xlim = c(length(btc_ts) - 100, length(btc_ts) + 30), 
+     main = "Forecasts from ARIMA(3,1,2) with drift",
+     xlab = "Time", ylab = "Price (USD)")
+
+### Calcular los rendimientos logarítmicos
+btc_returns <- diff(log(btc_close))
+
+btc_returns <- btc_returns[!is.na(btc_returns)]  # Eliminar NA resultantes de la diferenciación
+
+### Configurar el modelo GARCH (por ejemplo, GARCH(1,1))
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                   mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                   distribution.model = "norm")
+
+### Ajustar el modelo a los datos
+fit <- ugarchfit(spec = spec, data = btc_returns)
+
+### Imprimir el resumen del ajuste
+print(fit)
+
+### Visualizar los resultados del modelo GARCH
+plot(fit, which = "all")
